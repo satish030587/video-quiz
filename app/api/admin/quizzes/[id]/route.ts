@@ -8,19 +8,21 @@ export const dynamic = "force-dynamic";
 
 const schema = z.object({ passScore: z.number().int().min(1).max(100).optional(), timeLimitSeconds: z.number().int().min(30).optional() });
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   const json = await req.json().catch(() => null);
   const parsed = schema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ message: "Invalid input" }, { status: 400 });
-  const quiz = await prisma.quiz.update({ where: { id: params.id }, data: parsed.data });
+  const { id } = await params;
+  const quiz = await prisma.quiz.update({ where: { id }, data: parsed.data });
   return NextResponse.json({ quiz });
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-  await prisma.quiz.delete({ where: { id: params.id } });
+  const { id } = await params;
+  await prisma.quiz.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

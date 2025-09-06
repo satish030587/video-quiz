@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 
-type Purpose = "reset" | "verify-email" | "mfa-setup";
+type Purpose = "reset" | "verify-email" | "mfa-setup" | "invite";
 
 type TokenRecord = {
   id: string;

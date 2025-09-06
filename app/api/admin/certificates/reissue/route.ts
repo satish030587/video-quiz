@@ -11,10 +11,16 @@ export const dynamic = "force-dynamic";
 const bodySchema = z.object({ userId: z.string() });
 
 async function allModulesPassed(userId: string) {
-  const modules = await prisma.module.findMany({ include: { quiz: true } });
+  type ModuleWithQuiz = { quiz: { id: string } | null };
+  const modules: ModuleWithQuiz[] = await prisma.module.findMany({ include: { quiz: true } });
   if (modules.length === 0) return false;
-  const attempts = await prisma.attempt.findMany({ where: { userId } });
-  const passedQuizIds = new Set(attempts.filter((a) => a.passed).map((a) => a.quizId));
+  const attempts: Array<{ passed: boolean; quizId: string }> = await prisma.attempt.findMany({
+    where: { userId },
+    select: { passed: true, quizId: true },
+  });
+  const passedQuizIds = new Set(
+    attempts.filter((a) => a.passed).map((a) => a.quizId)
+  );
   return modules.every((m) => m.quiz && passedQuizIds.has(m.quiz.id));
 }
 

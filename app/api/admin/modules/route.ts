@@ -11,7 +11,8 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   // Ensure every module has a quiz (covers records added via Prisma Studio)
-  let modulesWithQuiz = await prisma.module.findMany({ orderBy: { order: "asc" }, include: { quiz: true } });
+  type ModuleWithQuiz = { id: string; order: number; youtubeId: string; quiz: { id: string } | null };
+  let modulesWithQuiz: ModuleWithQuiz[] = await prisma.module.findMany({ orderBy: { order: "asc" }, include: { quiz: true } });
   // Normalize YouTube IDs if stored as full URLs via Prisma Studio
   for (const m of modulesWithQuiz) {
     const id = extractYouTubeId(m.youtubeId);
@@ -32,7 +33,7 @@ export async function GET() {
     }
     modulesWithQuiz = await prisma.module.findMany({ orderBy: { order: "asc" }, include: { quiz: true } });
   }
-  const missing = modulesWithQuiz.filter((m) => !m.quiz);
+  const missing = modulesWithQuiz.filter((m: ModuleWithQuiz) => !m.quiz);
   for (const m of missing) {
     await prisma.quiz.upsert({ where: { moduleId: m.id }, create: { moduleId: m.id, passScore: 70, timeLimitSeconds: 300 }, update: {} });
   }

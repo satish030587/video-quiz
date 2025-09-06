@@ -16,7 +16,8 @@ export async function GET(req: Request) {
   const type = url.searchParams.get("type") || "completions";
   let csv = "";
   if (type === "completions") {
-    const quizzes = await prisma.quiz.findMany({ include: { module: true } });
+    type QuizWithModule = { id: string; module: { order: number; title: string } };
+    const quizzes: QuizWithModule[] = await prisma.quiz.findMany({ include: { module: true } });
     const attempts = await prisma.attempt.findMany({ include: { user: true } });
     const header = ["User Email", "User Name", "Module", "Score", "Passed", "Attempt #", "Submitted At"];
     const rows: string[][] = [header];

@@ -35,12 +35,13 @@ export async function POST(req: Request) {
   const gate = await canAttemptQuiz(userId, moduleId);
   if (!gate.allowed) return NextResponse.json({ message: gate.reason || "Forbidden" }, { status: 403 });
 
-  const quiz = await prisma.quiz.findUnique({ where: { moduleId }, include: { questions: { where: { active: true } } } });
+  type QuizWithQs = { id: string; passScore: number; questions: Array<{ id: string; correctIndex: number }> };
+  const quiz: QuizWithQs | null = await prisma.quiz.findUnique({ where: { moduleId }, include: { questions: { where: { active: true } } } });
   if (!quiz) return NextResponse.json({ message: "Quiz not found" }, { status: 404 });
   if (!quiz.questions.length) return NextResponse.json({ message: "No active questions" }, { status: 400 });
 
   // Build maps
-  const qMap = new Map(quiz.questions.map((q) => [q.id, q] as const));
+  const qMap = new Map(quiz.questions.map((q: { id: string; correctIndex: number }) => [q.id, q] as const));
 
   let correct = 0;
   let totalAnswered = 0;

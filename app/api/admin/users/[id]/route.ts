@@ -17,13 +17,13 @@ const patchSchema = z.object({
   phone: z.string().optional(),
 });
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   const json = await req.json().catch(() => null);
   const parsed = patchSchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ message: "Invalid input" }, { status: 400 });
-  const id = params.id;
+  const { id } = await params;
   const data: any = {};
   if (parsed.data.disabled !== undefined) data.disabledAt = parsed.data.disabled ? new Date() : null;
   if (parsed.data.name !== undefined) data.name = parsed.data.name;
@@ -45,10 +45,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-  const id = params.id;
+  const { id } = await params;
   if (id === session.user.id) return NextResponse.json({ message: "You cannot delete your own account" }, { status: 400 });
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return NextResponse.json({ ok: true });

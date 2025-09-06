@@ -9,7 +9,14 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-  const quizzes = await prisma.quiz.findMany({ include: { module: true }, orderBy: { module: { order: "asc" } } });
+  type QuizWithModule = {
+    id: string;
+    moduleId: string;
+    passScore: number;
+    timeLimitSeconds: number;
+    module: { title: string; order: number };
+  };
+  const quizzes: QuizWithModule[] = await prisma.quiz.findMany({ include: { module: true }, orderBy: { module: { order: "asc" } } });
   const rows = quizzes.map((q) => ({ id: q.id, moduleId: q.moduleId, moduleTitle: q.module.title, order: q.module.order, passScore: q.passScore, timeLimitSeconds: q.timeLimitSeconds }));
   return NextResponse.json({ quizzes: rows });
 }

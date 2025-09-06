@@ -2,8 +2,9 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
+import type { ReactNode } from "react";
 
-const items: { href: string; label: string; icon: JSX.Element }[] = [
+const items: { href: string; label: string; icon: ReactNode }[] = [
   { href: "/admin?view=dashboard", label: "Dashboard", icon: iconHome() },
   { href: "/admin?view=profile", label: "Profile", icon: iconUser() },
   { href: "/admin?view=users", label: "Users", icon: iconUsers() },

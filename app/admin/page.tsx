@@ -16,9 +16,9 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
   const [users, modules, attempts] = await Promise.all([
     prisma.user.count(),
     prisma.module.count(),
-    prisma.attempt.findMany({ select: { passed: true, quizId: true } }),
+    prisma.attempt.findMany({ select: { passed: true, quizId: true } }) as Promise<Array<{ passed: boolean; quizId: string }>>,
   ]);
-  const passed = attempts.filter((a) => a.passed).length;
+  const passed = attempts.filter((a: { passed: boolean }) => a.passed).length;
   const completionRate = attempts.length ? Math.round((passed / attempts.length) * 100) : 0;
 
   // Simple per-module pass counts

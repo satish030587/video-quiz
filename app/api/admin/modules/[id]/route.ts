@@ -15,7 +15,7 @@ const patchSchema = z.object({
   published: z.boolean().optional(),
 });
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   const body = await req.json().catch(() => null);
@@ -29,8 +29,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
   if (data.youtubeId) data.youtubeId = extractYouTubeId(data.youtubeId);
   // Handle reordering if order is provided
+  const { id } = await params;
   if (data.order != null) {
-    const current = await prisma.module.findUnique({ where: { id: params.id } });
+    const current = await prisma.module.findUnique({ where: { id } });
     if (current && current.order !== data.order) {
       const newOrder = data.order as number;
       if (newOrder > current.order) {
@@ -40,17 +41,18 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       }
     }
   }
-  const mod = await prisma.module.update({ where: { id: params.id }, data });
+  const mod = await prisma.module.update({ where: { id }, data });
   return NextResponse.json({ module: mod });
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-  const m = await prisma.module.findUnique({ where: { id: params.id } });
+  const { id } = await params;
+  const m = await prisma.module.findUnique({ where: { id } });
   if (!m) return NextResponse.json({ ok: true });
   const oldOrder = m.order;
-  await prisma.module.delete({ where: { id: params.id } });
+  await prisma.module.delete({ where: { id } });
   await prisma.module.updateMany({ where: { order: { gt: oldOrder } }, data: { order: { decrement: 1 } } });
   return NextResponse.json({ ok: true });
 }

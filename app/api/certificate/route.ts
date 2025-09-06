@@ -9,11 +9,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 async function allModulesPassed(userId: string) {
-  const modules = await prisma.module.findMany({ include: { quiz: true }, orderBy: { order: "asc" } });
+  type ModuleWithQuiz = { quiz: { id: string } | null };
+  const modules: ModuleWithQuiz[] = await prisma.module.findMany({ include: { quiz: true }, orderBy: { order: "asc" } });
   if (modules.length === 0) return false;
-  const attempts = await prisma.attempt.findMany({ where: { userId } });
+  const attempts: Array<{ passed: boolean; quizId: string }> = await prisma.attempt.findMany({ where: { userId }, select: { passed: true, quizId: true } });
   const passedQuizIds = new Set(attempts.filter((a) => a.passed).map((a) => a.quizId));
-  return modules.every((m) => m.quiz && passedQuizIds.has(m.quiz.id));
+  return modules.every((m: ModuleWithQuiz) => m.quiz && passedQuizIds.has(m.quiz.id));
 }
 
 async function computeOverallScore(userId: string) {
