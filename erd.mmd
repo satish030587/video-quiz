@@ -1,0 +1,69 @@
+## 2) Data Model & ER Diagram
+
+Entities: **User**, **Module**, **Quiz**, **Question**, **Attempt** (append‑only), **Certificate**. Two roles only: **ADMIN** and **EMPLOYEE**.
+
+```mermaid
+erDiagram
+    USER ||--o{ ATTEMPT : "makes"
+    QUIZ ||--o{ QUESTION : "has"
+    USER ||--o{ CERTIFICATE : "earns"
+    MODULE ||--|| QUIZ : "has 1:1"
+    QUIZ ||--o{ ATTEMPT : "is attempted by"
+
+    USER {
+      string id PK
+      string email UNIQUE
+      string passwordHash
+      string name
+      enum role  // ADMIN | EMPLOYEE
+      datetime createdAt
+    }
+    MODULE {
+      string id PK
+      int    order UNIQUE
+      string title
+      string description
+      string youtubeId
+    }
+    QUIZ {
+      string id PK
+      string moduleId FK UNIQUE
+      int    passScore
+      int    timeLimitSeconds
+    }
+    QUESTION {
+      string id PK
+      string quizId FK
+      string text
+      string[] options
+      int    correctIndex
+      bool   active
+    }
+    ATTEMPT {
+      string id PK
+      string userId FK
+      string quizId FK
+      int    attemptNo // 1 or 2
+      int    score
+      bool   passed
+      json   answersJson
+      datetime submittedAt
+      index (userId, quizId)
+    }
+    CERTIFICATE {
+      string id PK
+      string userId FK
+      datetime issuedAt
+      int    totalScore
+      string filePath
+    }
+```
+
+**Rules & constraints**
+- One **Quiz per Module** (`QUIZ.moduleId` UNIQUE).  
+- **Max 2 attempts** per (user, quiz) — enforced in service layer.  
+- **Append‑only** attempts for audit.  
+- Modules are **sequential** (`order` INT). Next unlocks only if previous passed.  
+- Certificate exists only when **all modules passed**.
+
+---

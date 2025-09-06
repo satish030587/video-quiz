@@ -1,0 +1,28 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { isModuleAccessible } from "@/lib/quiz";
+import VideoGate from "@/components/VideoGate";
+import { Suspense, use } from "react";
+
+export const dynamic = "force-dynamic";
+
+export default async function ModulePage({ params }: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions);
+  if (!session) redirect("/login");
+  const { id: moduleId } = await params;
+  const ok = await isModuleAccessible(session.user.id, moduleId);
+  if (!ok) redirect("/");
+  const mod = await prisma.module.findUnique({ where: { id: moduleId }, include: { quiz: true } });
+  if (!mod) redirect("/");
+  return (
+    <main>
+      <h1>Module {mod.order}: {mod.title}</h1>
+      <p style={{opacity:0.8}}>{mod.description}</p>
+      <Suspense fallback={<div>Loading player…</div>}>
+        <VideoGate videoId={mod.youtubeId} moduleId={mod.id} />
+      </Suspense>
+    </main>
+  );
+}

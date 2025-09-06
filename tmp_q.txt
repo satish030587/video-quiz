@@ -1,0 +1,92 @@
+"use client";
+import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type Option = { key: number; text: string };
+type Question = { id: string; text: string; options: Option[] };
+
+export default function QuizPage({ params }: { params: Promise<{ moduleId: string }> }) {
+  const { moduleId } = use(params);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [meta, setMeta] = useState<{ passScore: number; timeLimitSeconds: number; title: string } | null>(null);
+  const [answers, setAnswers] = useState<Record<string, number | undefined>>({});
+  const [index, setIndex] = useState(0);
+  const router = useRouter();
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      const res = await fetch(`/api/quiz/${moduleId}`);
+      if (!res.ok) {
+        setError((await res.json().catch(() => ({ message: "Failed" }))).message || "Failed to load quiz");
+        setLoading(false);
+        return;
+      }
+      const data = await res.json();
+      setQuestions(data.questions);
+      setMeta({ passScore: data.quiz.passScore, timeLimitSeconds: data.quiz.timeLimitSeconds, title: data.module.title });
+      setLoading(false);
+    }
+    load();
+  }, [moduleId]);
+
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  useEffect(() => { if (meta) setSecondsLeft(meta.timeLimitSeconds); }, [meta]);
+  useEffect(() => {
+    if (secondsLeft == null) return;
+    if (secondsLeft <= 0) { submit(); return; }
+    const t = setTimeout(() => setSecondsLeft((s) => (s ?? 0) - 1), 1000);
+    return () => clearTimeout(t);
+  }, [secondsLeft]);
+
+  async function submit() {
+    const payload = { moduleId, answers: questions.map((q) => ({ questionId: q.id, optionKey: answers[q.id] })) };
+    const res = await fetch("/api/attempt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (!res.ok) { setError((await res.json().then((d: any) => d.message).catch(() => "Submit failed")) || "Submit failed"); return; }
+    const data = await res.json();
+    const params = new URLSearchParams({ score: String(data.score), passed: data.passed ? "1" : "0", tq: String(data.totalQuestions ?? 0), ta: String(data.totalAnswered ?? 0), tc: String(data.totalCorrect ?? 0), tw: String(Math.max(0, (data.totalAnswered ?? 0) - (data.totalCorrect ?? 0))), req: String(data.passScore ?? 0), rem: String(data.attemptsRemaining ?? 0), an: String(data.attemptNo ?? 0), }).toString();
+    router.replace(`/results/${moduleId}?${params}`);
+  }
+
+  if (loading) return <main>Loading quiz...</main>;
+  if (error) return <main>Error: {error}</main>;
+  if (!meta) return null;
+  return (
+    <main>
+      <h1 className="text-2xl font-semibold mb-2 text-[color:var(--color-brand)]">Quiz: {meta.title}</h1>
+      <div className="mb-2 text-slate-700">Time left: {secondsLeft ?? 0}s · Pass ≥ {meta.passScore}%</div>
+      {questions.length > 0 && (
+        <section className="my-3 rounded border border-slate-200 bg-white p-4 shadow-[var(--shadow-card)]">
+          <div className="flex justify-between mb-2"><b>Question {index + 1} of {questions.length}</b></div>
+          {(() => {
+            const q = questions[index];
+            return (
+              <div>
+                <div className="mb-2">{q.text}</div>
+                <div className="grid gap-2">
+                  {q.options.map((opt) => (
+                    <label key={opt.key} className="flex items-center gap-2">
+                      <input type="radio" name={`q-${q.id}`} checked={answers[q.id] === opt.key} onChange={() => setAnswers((a) => ({ ...a, [q.id]: opt.key }))} />
+                      <span>{opt.text}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+          <div className="flex gap-2 mt-3">
+            <button className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50" onClick={() => setIndex((i) => Math.max(0, i - 1))} disabled={index === 0}>Previous</button>
+            {index < questions.length - 1 ? (
+              <button className="rounded bg-[color:var(--color-brand)] text-white px-3 py-1.5 text-sm hover:opacity-95" onClick={() => setIndex((i) => Math.min(questions.length - 1, i + 1))}>Next</button>
+            ) : (
+              <button className="rounded bg-[color:var(--color-brand)] text-white px-3 py-1.5 text-sm hover:opacity-95" onClick={submit}>Submit</button>
+            )}
+          </div>
+        </section>
+      )}
+    </main>
+  );
+}
+

@@ -1,0 +1,95 @@
+// prisma/schema.prisma
+// Video Quiz App — Complete Database Schema (PostgreSQL)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  name            String
+  role            Role     @default(EMPLOYEE)
+  passwordHash    String
+  emailVerifiedAt DateTime?
+  mfaSecret       String?
+  disabledAt      DateTime?
+  lockedUntil     DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  attempts     Attempt[]
+  certificates Certificate[]
+}
+
+model Module {
+  id          String   @id @default(cuid())
+  order       Int      @unique
+  title       String
+  description String?
+  youtubeId   String
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  quiz Quiz?
+}
+
+model Quiz {
+  id               String   @id @default(cuid())
+  moduleId         String   @unique
+  passScore        Int
+  timeLimitSeconds Int      @default(300)
+
+  module    Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  questions Question[]
+  attempts  Attempt[]
+}
+
+model Question {
+  id           String   @id @default(cuid())
+  quizId       String
+  text         String
+  options      String[]
+  correctIndex Int
+  active       Boolean  @default(true)
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+}
+
+model Attempt {
+  id          String   @id @default(cuid())
+  userId      String
+  quizId      String
+  attemptNo   Int
+  score       Int
+  passed      Boolean
+  answersJson Json
+  submittedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, quizId, attemptNo])
+}
+
+model Certificate {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  issuedAt   DateTime @default(now())
+  totalScore Int
+  filePath   String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
