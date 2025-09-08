@@ -12,7 +12,7 @@ const merri = Merriweather({ subsets: ["latin"], weight: ["400","700"], variable
 
 export const metadata: Metadata = {
   title: "Sarvahitha Ayurvedalaya Pvt Ltd · Video Quiz",
-  description: "Training portal by Sarvahitha Ayurvedalaya Pvt Ltd",
+  description: "Quiz portal by Sarvahitha Ayurvedalaya Pvt Ltd",
 };
 
 export default async function RootLayout({

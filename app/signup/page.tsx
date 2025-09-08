@@ -41,7 +41,7 @@ export default function SignupPage() {
       <div className="w-full max-w-md">
         <div className="text-center">
           <div className="text-[color:var(--color-brand)] font-semibold text-lg">Sarvahitha Ayurvedalaya Pvt Ltd</div>
-          <div className="text-slate-500 text-sm">Training Portal</div>
+          <div className="text-slate-500 text-sm">Quiz Portal</div>
         </div>
         <h1 className="text-2xl font-semibold mt-4 mb-4 text-[color:var(--color-brand)] text-center">Complete Signup</h1>
         {!token ? (

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import fs from "fs";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,16 @@ export async function POST(req: Request) {
   const quiz = await prisma.quiz.findUnique({ where: { moduleId } });
   if (!quiz) return NextResponse.json({ message: "Quiz not found for module" }, { status: 404 });
   await prisma.attempt.deleteMany({ where: { userId, quizId: quiz.id } });
+  // Invalidate any existing certificate for this user
+  try {
+    const cert = await prisma.certificate.findUnique({ where: { userId } });
+    if (cert) {
+      await prisma.certificate.delete({ where: { userId } });
+      if (cert.filePath && fs.existsSync(cert.filePath)) {
+        fs.unlink(cert.filePath, () => {});
+      }
+    }
+  } catch {}
   return NextResponse.json({ ok: true });
 }
 

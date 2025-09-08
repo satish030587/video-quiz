@@ -35,7 +35,8 @@ export async function GET() {
   if (!session) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   const eligible = await allModulesPassed(session.user.id);
   const existing = await prisma.certificate.findUnique({ where: { userId: session.user.id } });
-  const url = existing ? `/certificates/${path.basename(existing.filePath)}` : undefined;
+  // Only provide a URL if the user is currently eligible
+  const url = existing && eligible ? `/api/certificate/download` : undefined;
   return NextResponse.json({ eligible, url });
 }
 
@@ -51,7 +52,8 @@ export async function POST() {
     update: { filePath, totalScore: overallScore },
     create: { userId: session.user.id, filePath, totalScore: overallScore },
   });
-  const url = `/certificates/${path.basename(record.filePath)}`;
+  // Serve via authenticated download endpoint
+  const url = `/api/certificate/download`;
   return NextResponse.json({ url });
 }
 

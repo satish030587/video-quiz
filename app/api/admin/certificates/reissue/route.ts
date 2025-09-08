@@ -7,6 +7,7 @@ import path from "path";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const bodySchema = z.object({ userId: z.string() });
 
@@ -49,8 +50,8 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ message: "User not found" }, { status: 404 });
   const score = await computeOverallScore(userId);
   const filePath = await generateCertificatePdf({ userName: user.name, userEmail: user.email, overallScore: score });
-  const record = await prisma.certificate.upsert({ where: { userId }, update: { filePath, totalScore: score }, create: { userId, filePath, totalScore: score } });
-  const url = `/certificates/${path.basename(record.filePath)}`;
+  await prisma.certificate.upsert({ where: { userId }, update: { filePath, totalScore: score }, create: { userId, filePath, totalScore: score } });
+  const url = `/api/certificate/download?userId=${encodeURIComponent(userId)}`;
   return NextResponse.json({ url });
 }
 

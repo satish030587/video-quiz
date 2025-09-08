@@ -18,7 +18,7 @@ export default function Header() {
         <Link href="/" className="text-lg font-semibold text-[color:var(--color-brand)]">
           Sarvahitha Ayurvedalaya Pvt Ltd
         </Link>
-        <span className="hidden sm:inline text-sm text-slate-500">· Training Portal</span>
+        <span className="hidden sm:inline text-sm text-slate-500">· Quiz Portal</span>
         <div className="ml-auto flex items-center gap-3">
           {!session ? (
             <Link href="/login" className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">Login</Link>
