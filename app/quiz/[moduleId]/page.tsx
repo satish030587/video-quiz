@@ -1,5 +1,5 @@
 "use client";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Option = { key: number; text: string };
@@ -14,6 +14,7 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
   const [answers, setAnswers] = useState<Record<string, number | undefined>>({});
   const [index, setIndex] = useState(0);
   const router = useRouter();
+  const storageKey = useMemo(() => `quiz:${moduleId}`, [moduleId]);
 
   useEffect(() => {
     async function load() {
@@ -35,9 +36,31 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
+  // Initialize timer and restore state from localStorage if present
   useEffect(() => {
-    if (meta) setSecondsLeft(meta.timeLimitSeconds);
-  }, [meta]);
+    if (!meta) return;
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem(storageKey) : null;
+      if (raw) {
+        const saved = JSON.parse(raw) as { endsAt?: number; answers?: Record<string, number>; index?: number };
+        if (saved.answers && typeof saved.answers === "object") setAnswers(saved.answers);
+        if (typeof saved.index === "number") setIndex(Math.min(Math.max(0, saved.index), Math.max(0, (questions?.length ?? 1) - 1)));
+        if (typeof saved.endsAt === "number") {
+          const remain = Math.floor((saved.endsAt - Date.now()) / 1000);
+          setSecondsLeft(remain);
+          return; // do not reset a running/expired timer
+        }
+      }
+      // No saved state: create one starting now
+      const endsAt = Date.now() + (meta.timeLimitSeconds ?? 0) * 1000;
+      const initial = { endsAt, answers: {}, index: 0 };
+      if (typeof window !== "undefined") localStorage.setItem(storageKey, JSON.stringify(initial));
+      setSecondsLeft(meta.timeLimitSeconds);
+    } catch (e) {
+      // Fallback to fresh timer if parsing fails
+      setSecondsLeft(meta.timeLimitSeconds);
+    }
+  }, [meta, storageKey, questions?.length]);
 
   useEffect(() => {
     if (secondsLeft == null) return;
@@ -64,6 +87,8 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
       return;
     }
     const data = await res.json();
+    // Clear persisted quiz state on successful submission
+    try { if (typeof window !== "undefined") localStorage.removeItem(storageKey); } catch {}
     const params = new URLSearchParams({
       score: String(data.score),
       passed: data.passed ? "1" : "0",
@@ -90,11 +115,33 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
   })();
 
   function jumpTo(i: number) {
-    setIndex(Math.min(Math.max(0, i), Math.max(0, total - 1)));
+    const next = Math.min(Math.max(0, i), Math.max(0, total - 1));
+    setIndex(next);
+    // persist index
+    try {
+      if (typeof window !== "undefined") {
+        const raw = localStorage.getItem(storageKey);
+        const saved = raw ? JSON.parse(raw) : {};
+        saved.index = next;
+        localStorage.setItem(storageKey, JSON.stringify(saved));
+      }
+    } catch {}
   }
 
   function selectOption(qId: string, optKey: number) {
-    setAnswers((a) => ({ ...a, [qId]: optKey }));
+    setAnswers((a) => {
+      const next = { ...a, [qId]: optKey };
+      // persist answers
+      try {
+        if (typeof window !== "undefined") {
+          const raw = localStorage.getItem(storageKey);
+          const saved = raw ? JSON.parse(raw) : {};
+          saved.answers = next;
+          localStorage.setItem(storageKey, JSON.stringify(saved));
+        }
+      } catch {}
+      return next;
+    });
   }
 
   function Ring({ value, total }: { value: number; total: number }) {
