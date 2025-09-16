@@ -24,10 +24,13 @@ export async function generateCertificatePdf({
   userName,
   userEmail,
   overallScore,
-}: { userName: string; userEmail: string; overallScore: number }) {
+  fileName,
+  contextTitle,
+}: { userName: string; userEmail: string; overallScore: number; fileName?: string; contextTitle?: string }) {
   const dir = ensureCertificatesDir();
   const safe = userEmail.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const filePath = path.join(dir, `${safe}.pdf`);
+  const finalName = fileName && fileName.trim().length > 0 ? fileName : `${safe}.pdf`;
+  const filePath = path.join(dir, finalName);
 
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595.28, 841.89]); // A4
@@ -58,13 +61,19 @@ export async function generateCertificatePdf({
   const name = userName || userEmail;
   page.drawText(name, { x: (width - fontBold.widthOfTextAtSize(name, 22)) / 2, y: height - 220, size: 22, font: fontBold, color: rgb(colors.primary.r, colors.primary.g, colors.primary.b) });
 
+  // Context (e.g., Main Module name)
+  if (contextTitle && contextTitle.trim().length > 0) {
+    const ctx = `For: ${contextTitle}`;
+    page.drawText(ctx, { x: (width - fontBold.widthOfTextAtSize(ctx, 14)) / 2, y: height - 240, size: 14, font: fontBold, color: rgb(colors.slate.r, colors.slate.g, colors.slate.b) });
+  }
+
   // Details
   const lines = [
     `Email: ${userEmail}`,
     `Overall Score: ${overallScore}%`,
     `Date: ${new Date().toLocaleDateString()}`,
   ];
-  let y = height - 260;
+  let y = height - 262;
   for (const l of lines) {
     page.drawText(l, { x: (width - fontReg.widthOfTextAtSize(l, 12)) / 2, y, size: 12, font: fontReg, color: rgb(colors.text.r, colors.text.g, colors.text.b) });
     y -= 16;

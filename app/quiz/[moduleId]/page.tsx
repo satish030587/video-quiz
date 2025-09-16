@@ -10,7 +10,7 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [meta, setMeta] = useState<{ passScore: number; timeLimitSeconds: number; title: string } | null>(null);
+  const [meta, setMeta] = useState<{ passScore: number; title: string } | null>(null);
   const [answers, setAnswers] = useState<Record<string, number | undefined>>({});
   const [index, setIndex] = useState(0);
   const router = useRouter();
@@ -27,50 +27,28 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
       }
       const data = await res.json();
       setQuestions(data.questions);
-      setMeta({ passScore: data.quiz.passScore, timeLimitSeconds: data.quiz.timeLimitSeconds, title: data.module.title });
+      setMeta({ passScore: data.quiz.passScore, title: data.module.title });
       setLoading(false);
     }
     load();
   }, [moduleId]);
 
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
-
-  // Initialize timer and restore state from localStorage if present
+  
+  // Restore saved answers and index (no timer)
   useEffect(() => {
     if (!meta) return;
     try {
       const raw = typeof window !== "undefined" ? localStorage.getItem(storageKey) : null;
       if (raw) {
-        const saved = JSON.parse(raw) as { endsAt?: number; answers?: Record<string, number>; index?: number };
+        const saved = JSON.parse(raw) as { answers?: Record<string, number>; index?: number };
         if (saved.answers && typeof saved.answers === "object") setAnswers(saved.answers);
         if (typeof saved.index === "number") setIndex(Math.min(Math.max(0, saved.index), Math.max(0, (questions?.length ?? 1) - 1)));
-        if (typeof saved.endsAt === "number") {
-          const remain = Math.floor((saved.endsAt - Date.now()) / 1000);
-          setSecondsLeft(remain);
-          return; // do not reset a running/expired timer
-        }
+      } else {
+        if (typeof window !== "undefined") localStorage.setItem(storageKey, JSON.stringify({ answers: {}, index: 0 }));
       }
-      // No saved state: create one starting now
-      const endsAt = Date.now() + (meta.timeLimitSeconds ?? 0) * 1000;
-      const initial = { endsAt, answers: {}, index: 0 };
-      if (typeof window !== "undefined") localStorage.setItem(storageKey, JSON.stringify(initial));
-      setSecondsLeft(meta.timeLimitSeconds);
-    } catch (e) {
-      // Fallback to fresh timer if parsing fails
-      setSecondsLeft(meta.timeLimitSeconds);
-    }
+    } catch {}
   }, [meta, storageKey, questions?.length]);
-
-  useEffect(() => {
-    if (secondsLeft == null) return;
-    if (secondsLeft <= 0 && !submitted) {
-      submit();
-      return;
-    }
-    const t = setTimeout(() => setSecondsLeft((s) => (s ?? 0) - 1), 1000);
-    return () => clearTimeout(t);
-  }, [secondsLeft, submitted]);
 
   async function submit() {
     if (submitted) return;
@@ -106,13 +84,7 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
   // Derived UI helpers
   const total = questions.length;
   const answeredCount = questions.reduce((n, q) => (answers[q.id] != null ? n + 1 : n), 0);
-  const timeText = (() => {
-    const s = Math.max(0, secondsLeft ?? 0);
-    const h = Math.floor(s / 3600).toString().padStart(2, "0");
-    const m = Math.floor((s % 3600) / 60).toString().padStart(2, "0");
-    const sc = Math.floor(s % 60).toString().padStart(2, "0");
-    return `${h}:${m}:${sc}`;
-  })();
+  const allAnswered = total > 0 && answeredCount === total;
 
   function jumpTo(i: number) {
     const next = Math.min(Math.max(0, i), Math.max(0, total - 1));
@@ -183,22 +155,14 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
 
       {/* Card */}
       <section className="rounded border border-slate-200 bg-white shadow-[var(--shadow-card)]">
-        {/* Header row */}
+        {/* Header row (no timer) */}
         <div className="flex items-center gap-4 p-4 border-b border-slate-100">
-          <div className="flex items-center gap-2 text-slate-700">
-            {/* Clock icon */}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-slate-500">
-              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            <span className="text-sm">Time remaining</span>
-            <b className="tabular-nums">{timeText}</b>
-          </div>
+          <div className="text-slate-700 text-sm">Answer all questions to enable submit.</div>
           <div className="ml-auto">
             <button
               className="rounded bg-[color:var(--color-brand)] text-white px-4 py-1.5 text-sm hover:opacity-95 disabled:opacity-60"
               onClick={submit}
-              disabled={submitted}
+              disabled={submitted || !allAnswered}
             >
               Submit
             </button>
@@ -256,42 +220,48 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
         </div>
 
         {/* Pagination */}
-        <div className="border-t border-slate-100 p-4 flex flex-wrap items-center gap-2">
-          <button
-            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
-            onClick={() => jumpTo(index - 1)}
-            disabled={index === 0}
-          >
-            Prev
-          </button>
-          <div className="flex flex-wrap gap-2">
-            {questions.map((q, i) => {
-              const isCurrent = i === index;
-              const isDone = answers[q.id] != null;
-              return (
-                <button
-                  key={q.id}
-                  onClick={() => jumpTo(i)}
-                  className={`w-8 h-8 rounded-md text-sm tabular-nums border transition-colors ${
-                    isCurrent
-                      ? "bg-[color:var(--color-brand)] text-white border-[color:var(--color-brand)]"
-                      : isDone
-                      ? "border-[color:var(--color-brand)]/60 text-[color:var(--color-brand)]/90 hover:bg-[color:var(--color-brand)]/5"
-                      : "border-slate-300 text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              );
-            })}
+        <div className="border-t border-slate-100 p-4">
+          <div className="flex justify-center items-center">
+            <div className="inline-flex items-center shadow-sm rounded-md overflow-hidden">
+              <button
+                className="bg-white px-3 py-1.5 text-sm border border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:bg-slate-50"
+                onClick={() => jumpTo(index - 1)}
+                disabled={index === 0}
+              >
+                Prev
+              </button>
+              
+              <div className="flex border-t border-b border-slate-300">
+                {questions.map((q, i) => {
+                  const isCurrent = i === index;
+                  const isDone = answers[q.id] != null;
+                  return (
+                    <button
+                      key={q.id}
+                      onClick={() => jumpTo(i)}
+                      className={`w-8 h-8 text-sm tabular-nums border-r last:border-r-0 transition-colors ${
+                        isCurrent
+                          ? "bg-[color:var(--color-brand)] text-white border-[color:var(--color-brand)]"
+                          : isDone
+                          ? "border-slate-300 text-[color:var(--color-brand)] hover:bg-[color:var(--color-brand)]/5"
+                          : "border-slate-300 text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <button
+                className="bg-white px-3 py-1.5 text-sm border border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:bg-slate-50"
+                onClick={() => jumpTo(index + 1)}
+                disabled={index >= total - 1}
+              >
+                Next
+              </button>
+            </div>
           </div>
-          <button
-            className="ml-auto rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
-            onClick={() => jumpTo(index + 1)}
-            disabled={index >= total - 1}
-          >
-            Next
-          </button>
         </div>
       </section>
     </main>

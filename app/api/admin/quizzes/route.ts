@@ -13,15 +13,14 @@ export async function GET() {
     id: string;
     moduleId: string;
     passScore: number;
-    timeLimitSeconds: number;
     module: { title: string; order: number };
   };
   const quizzes: QuizWithModule[] = await prisma.quiz.findMany({ include: { module: true }, orderBy: { module: { order: "asc" } } });
-  const rows = quizzes.map((q) => ({ id: q.id, moduleId: q.moduleId, moduleTitle: q.module.title, order: q.module.order, passScore: q.passScore, timeLimitSeconds: q.timeLimitSeconds }));
+  const rows = quizzes.map((q: any) => ({ id: q.id, moduleId: q.moduleId, moduleTitle: q.module.title, order: q.module.order, passScore: q.passScore }));
   return NextResponse.json({ quizzes: rows });
 }
 
-const upsertSchema = z.object({ moduleId: z.string(), passScore: z.number().int().min(1).max(100), timeLimitSeconds: z.number().int().min(30) });
+const upsertSchema = z.object({ moduleId: z.string(), passScore: z.number().int().min(1).max(100) });
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -29,8 +28,8 @@ export async function POST(req: Request) {
   const json = await req.json().catch(() => null);
   const parsed = upsertSchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ message: "Invalid input" }, { status: 400 });
-  const { moduleId, passScore, timeLimitSeconds } = parsed.data;
-  const quiz = await prisma.quiz.upsert({ where: { moduleId }, create: { moduleId, passScore, timeLimitSeconds }, update: { passScore, timeLimitSeconds } });
+  const { moduleId, passScore } = parsed.data;
+  const quiz = await prisma.quiz.upsert({ where: { moduleId }, create: { moduleId, passScore }, update: { passScore } });
   return NextResponse.json({ quiz }, { status: 201 });
 }
 

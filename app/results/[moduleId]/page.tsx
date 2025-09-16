@@ -85,22 +85,28 @@ export default async function Results({ params, searchParams }: { params: Promis
                 </div>
               </div>
 
-              <div className="mt-1">
-                {passed ? (
-                  <p className="text-emerald-700">Congratulations! You have passed.</p>
-                ) : attemptsRemaining > 0 ? (
-                  <p className="text-slate-700">Better luck next time. You have {attemptsRemaining} attempt(s) remaining.</p>
-                ) : (
-                  <p className="text-slate-700">Sorry, no attempts remaining. Contact your admin.</p>
-                )}
-              </div>
+              {passed ? (
+                <div className="mt-1 text-emerald-700">Congratulations! You have passed.</div>
+              ) : (
+                <div className="mt-1 text-red-700">
+                  {attemptsRemaining > 0 
+                    ? `You didn't pass this time. You have ${attemptsRemaining} attempt remaining.` 
+                    : "You have used all your attempts for this quiz."}
+                </div>
+              )}
 
               <div className="flex flex-wrap gap-2 mt-4">
-                <Link href="/"><button className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">Back to Dashboard</button></Link>
-                {!passed && attemptsRemaining > 0 && (
-                  <Link href={`/module/${moduleId}`}>
-                    <button className="rounded bg-[color:var(--color-brand)] text-white px-3 py-1.5 text-sm hover:opacity-95">Retry / Rewatch</button>
-                  </Link>
+                {passed ? (
+                  <Link href="/"><button className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">Back to Dashboard</button></Link>
+                ) : attemptsRemaining > 0 ? (
+                  <>
+                    <Link href={`/module/${moduleId}`}>
+                      <button className="rounded bg-[color:var(--color-brand)] text-white px-3 py-1.5 text-sm hover:opacity-95">Try Again</button>
+                    </Link>
+                    <Link href="/"><button className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">Back to Dashboard</button></Link>
+                  </>
+                ) : (
+                  <Link href="/"><button className="rounded bg-[color:var(--color-brand)] text-white px-3 py-1.5 text-sm hover:opacity-95">Back to Dashboard</button></Link>
                 )}
               </div>
             </div>

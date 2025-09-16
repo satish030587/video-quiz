@@ -9,6 +9,7 @@ const items: { href: string; label: string; icon: ReactNode }[] = [
   { href: "/admin?view=profile", label: "Profile", icon: iconUser() },
   { href: "/admin?view=users", label: "Users", icon: iconUsers() },
   { href: "/admin?view=modules", label: "Modules", icon: iconLayers() },
+  { href: "/admin?view=main-modules", label: "Main Modules", icon: iconLayers() },
   { href: "/admin?view=quizzes", label: "Quizzes", icon: iconClipboard() },
   { href: "/admin?view=questions", label: "Questions", icon: iconQuestion() },
   { href: "/admin?view=reports", label: "Reports", icon: iconChart() },

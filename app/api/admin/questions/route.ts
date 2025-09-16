@@ -17,19 +17,49 @@ export async function GET(req: Request) {
   return NextResponse.json({ questions: quiz.questions });
 }
 
-const createSchema = z.object({ moduleId: z.string(), text: z.string().min(4), options: z.array(z.string().min(1)).min(2), correctIndex: z.number().int().nonnegative() });
+// Enhanced schema to support different question types
+const createSchema = z.object({ 
+  moduleId: z.string(), 
+  text: z.string().min(4), 
+  options: z.array(z.string().min(1)).min(2), 
+  correctIndex: z.number().int().nonnegative(),
+  // New fields
+  questionType: z.enum(["MCQ_4", "MCQ_2", "TRUE_FALSE"]),
+  correctAnswer: z.string(),
+  optionA: z.string().optional(),
+  optionB: z.string().optional(),
+  optionC: z.string().optional(),
+  optionD: z.string().optional()
+});
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   const json = await req.json().catch(() => null);
   const parsed = createSchema.safeParse(json);
-  if (!parsed.success) return NextResponse.json({ message: "Invalid input" }, { status: 400 });
-  const { moduleId, text, options, correctIndex } = parsed.data;
+  if (!parsed.success) return NextResponse.json({ message: "Invalid input", errors: parsed.error.format() }, { status: 400 });
+  
+  const { moduleId, text, options, correctIndex, questionType, correctAnswer, optionA, optionB, optionC, optionD } = parsed.data;
+  
   const quiz = await prisma.quiz.findUnique({ where: { moduleId } });
   if (!quiz) return NextResponse.json({ message: "Quiz not found" }, { status: 404 });
   if (correctIndex < 0 || correctIndex >= options.length) return NextResponse.json({ message: "correctIndex out of range" }, { status: 400 });
-  const q = await prisma.question.create({ data: { quizId: quiz.id, text, options, correctIndex } });
+  
+  const q = await prisma.question.create({ 
+    data: { 
+      quizId: quiz.id, 
+      text, 
+      options, 
+      correctIndex,
+      questionType,
+      correctAnswer,
+      optionA,
+      optionB,
+      optionC,
+      optionD
+    } 
+  });
+  
   return NextResponse.json({ question: q }, { status: 201 });
 }
 

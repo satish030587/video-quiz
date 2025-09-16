@@ -6,7 +6,7 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-const schema = z.object({ passScore: z.number().int().min(1).max(100).optional(), timeLimitSeconds: z.number().int().min(30).optional() });
+const schema = z.object({ passScore: z.number().int().min(1).max(100).optional() });
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);

@@ -18,10 +18,25 @@ async function allModulesPassed(userId: string) {
 }
 
 async function computeOverallScore(userId: string) {
-  const modules = await prisma.module.findMany({ include: { quiz: true }, orderBy: { order: "asc" } });
-  if (modules.length === 0) return 0;
-  let sum = 0;
-  let count = 0;
+  // Prefer averaging across Main Modules if any exist
+  const mains = await (prisma as any).mainModule.findMany({});
+  if (mains && mains.length) {
+    let total = 0; let groups = 0;
+    for (const mm of mains as Array<{ id: number }>) {
+      const subs = await prisma.module.findMany({ where: { mainModuleId: mm.id } as any, include: { quiz: true } });
+      let sum = 0, count = 0;
+      for (const m of subs) {
+        if (!m.quiz) continue;
+        const best = await prisma.attempt.findFirst({ where: { userId, quizId: m.quiz.id }, orderBy: { score: "desc" } });
+        if (best) { sum += best.score; count++; }
+      }
+      if (count) { total += Math.round(sum / count); groups++; }
+    }
+    return groups ? Math.round(total / groups) : 0;
+  }
+  // Fallback: average across all modules
+  const modules = await prisma.module.findMany({ include: { quiz: true } });
+  let sum = 0, count = 0;
   for (const m of modules) {
     if (!m.quiz) continue;
     const best = await prisma.attempt.findFirst({ where: { userId, quizId: m.quiz.id }, orderBy: { score: "desc" } });
@@ -34,7 +49,8 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   const eligible = await allModulesPassed(session.user.id);
-  const existing = await prisma.certificate.findUnique({ where: { userId: session.user.id } });
+  // Support legacy global certificate (mainModuleId: null)
+  const existing = await (prisma as any).certificate.findFirst({ where: { userId: session.user.id, mainModuleId: null } });
   // Only provide a URL if the user is currently eligible
   const url = existing && eligible ? `/api/certificate/download` : undefined;
   return NextResponse.json({ eligible, url });
@@ -46,11 +62,11 @@ export async function POST() {
   const eligible = await allModulesPassed(session.user.id);
   if (!eligible) return NextResponse.json({ message: "Not eligible" }, { status: 400 });
   const overallScore = await computeOverallScore(session.user.id);
-  const filePath = await generateCertificatePdf({ userName: session.user.name || "User", userEmail: session.user.email || session.user.id, overallScore });
-  const record = await prisma.certificate.upsert({
-    where: { userId: session.user.id },
+  const filePath = await generateCertificatePdf({ userName: session.user.name || "User", userEmail: session.user.email || session.user.id, overallScore, contextTitle: "All Main Modules" });
+  const record = await (prisma as any).certificate.upsert({
+    where: { userId_mainModuleId: { userId: session.user.id, mainModuleId: null } },
     update: { filePath, totalScore: overallScore },
-    create: { userId: session.user.id, filePath, totalScore: overallScore },
+    create: { userId: session.user.id, mainModuleId: null, filePath, totalScore: overallScore },
   });
   // Serve via authenticated download endpoint
   const url = `/api/certificate/download`;

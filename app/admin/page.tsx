@@ -13,10 +13,12 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
   const sp = await searchParams;
   const view = sp.view || "dashboard";
 
-  const [users, modules, attempts] = await Promise.all([
+  const [users, modules, attempts, mainModules, assignedSubs] = await Promise.all([
     prisma.user.count(),
     prisma.module.count(),
     prisma.attempt.findMany({ select: { passed: true, quizId: true } }) as Promise<Array<{ passed: boolean; quizId: string }>>,
+    (prisma as any).mainModule.findMany({ orderBy: { orderIndex: "asc" } }),
+    prisma.module.count({ where: { NOT: { mainModuleId: null as any } } as any }),
   ]);
   const passed = attempts.filter((a: { passed: boolean }) => a.passed).length;
   const completionRate = attempts.length ? Math.round((passed / attempts.length) * 100) : 0;
@@ -48,7 +50,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
               <div className="text-3xl font-bold">{users}</div>
             </div>
             <div className="rounded border border-slate-200 bg-white p-4 shadow-[var(--shadow-card)]">
-              <div className="text-slate-600">Modules</div>
+              <div className="text-slate-600">Sub-modules (Modules)</div>
               <div className="text-3xl font-bold">{modules}</div>
             </div>
             <div className="rounded border border-slate-200 bg-white p-4 shadow-[var(--shadow-card)]">
@@ -56,22 +58,61 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
               <div className="text-3xl font-bold">{completionRate}%</div>
             </div>
           </div>
-          <h3 className="font-semibold mt-6 mb-2">Module pass rates</h3>
+          <div className="grid md:grid-cols-3 gap-3 mt-3">
+            <div className="rounded border border-slate-200 bg-white p-4 shadow-[var(--shadow-card)]">
+              <div className="text-slate-600">Main Modules</div>
+              <div className="text-3xl font-bold">{mainModules.length}</div>
+            </div>
+            <div className="rounded border border-slate-200 bg-white p-4 shadow-[var(--shadow-card)]">
+              <div className="text-slate-600">Assigned Sub-modules</div>
+              <div className="text-3xl font-bold">{assignedSubs}</div>
+            </div>
+            <div className="rounded border border-slate-200 bg-white p-4 shadow-[var(--shadow-card)]">
+              <div className="text-slate-600">Unassigned Sub-modules</div>
+              <div className="text-3xl font-bold">{Math.max(0, modules - assignedSubs)}</div>
+            </div>
+          </div>
+          {/* Module pass rates removed per request */}
+          <h3 className="font-semibold mt-6 mb-2">Main Modules overview</h3>
           <div className="overflow-x-auto rounded border border-slate-200 bg-white shadow-[var(--shadow-card)]">
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left border-b border-slate-200 px-2 py-2 text-sm font-semibold">Module</th>
+                  <th className="text-left border-b border-slate-200 px-2 py-2 text-sm font-semibold">Main Module</th>
+                  <th className="text-left border-b border-slate-200 px-2 py-2 text-sm font-semibold">Sub-modules</th>
+                  <th className="text-left border-b border-slate-200 px-2 py-2 text-sm font-semibold">Attempts</th>
                   <th className="text-left border-b border-slate-200 px-2 py-2 text-sm font-semibold">Pass rate</th>
                 </tr>
               </thead>
               <tbody>
-                {quizRows.map((r, i) => (
-                  <tr key={i}>
-                    <td className="px-2 py-2 border-b border-slate-100">{r.module}</td>
-                    <td className="px-2 py-2 border-b border-slate-100">{r.passRate}</td>
-                  </tr>
-                ))}
+                {await (async () => {
+                  // Build per-main-module pass rates
+                  const rows: Array<{ id: number; name: string; subs: number; attempts: number; rate: string }> = [];
+                  for (const mm of mainModules as Array<{ id: number; orderIndex: number; title: string }>) {
+                    const subs = await prisma.module.findMany({ where: { mainModuleId: mm.id } as any, include: { quiz: true } });
+                    const quizIds = subs.filter((m: any) => m.quiz).map((m: any) => m.quiz.id as string);
+                    let attemptsCount = 0, passCount = 0;
+                    if (quizIds.length) {
+                      const atts = await prisma.attempt.findMany({ where: { quizId: { in: quizIds } }, select: { passed: true } });
+                      attemptsCount = atts.length;
+                      passCount = atts.filter(a => a.passed).length;
+                    }
+                    const rate = attemptsCount ? `${Math.round((passCount / attemptsCount) * 100)}%` : "0%";
+                    rows.push({ id: mm.id, name: `${mm.orderIndex}. ${mm.title}`, subs: subs.length, attempts: attemptsCount, rate });
+                  }
+                  return rows.map((r, i) => (
+                    <tr key={i} className="relative hover:bg-slate-50 cursor-pointer">
+                      {/* Full-row clickable overlay */}
+                      <td className="px-2 py-2 border-b border-slate-100">
+                        <a href={`/admin/main-modules/${rows[i].id}/progress`} className="absolute inset-0" aria-label={`Open ${r.name}`}></a>
+                        {r.name}
+                      </td>
+                      <td className="px-2 py-2 border-b border-slate-100">{r.subs}</td>
+                      <td className="px-2 py-2 border-b border-slate-100">{r.attempts}</td>
+                      <td className="px-2 py-2 border-b border-slate-100">{r.rate}</td>
+                    </tr>
+                  ));
+                })()}
               </tbody>
             </table>
           </div>

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 
-type QuizRow = { id: string; moduleId: string; moduleTitle: string; order: number; passScore: number; timeLimitSeconds: number };
+type QuizRow = { id: string; moduleId: string; moduleTitle: string; order: number; passScore: number };
 
 export default function AdminQuizzes() {
   const [rows, setRows] = useState<QuizRow[]>([]);
@@ -14,9 +14,9 @@ export default function AdminQuizzes() {
   }
   useEffect(() => { load(); }, []);
 
-  async function save(id: string, passScore: number, timeLimitSeconds: number) {
+  async function save(id: string, passScore: number) {
     setMessage(null);
-    const res = await fetch(`/api/admin/quizzes/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passScore, timeLimitSeconds }) });
+    const res = await fetch(`/api/admin/quizzes/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passScore }) });
     if (!res.ok) { setMessage("Failed to save"); return; }
     load();
   }
@@ -38,7 +38,7 @@ export default function AdminQuizzes() {
             <tr>
               <th className="text-left border-b border-slate-200 px-2 py-2 text-sm font-semibold">Module</th>
               <th className="text-left border-b border-slate-200 px-2 py-2 text-sm font-semibold">Pass Score</th>
-              <th className="text-left border-b border-slate-200 px-2 py-2 text-sm font-semibold">Time Limit (s)</th>
+              {/* Timer removed */}
               <th className="text-left border-b border-slate-200 px-2 py-2 text-sm font-semibold">Actions</th>
             </tr>
           </thead>
@@ -47,14 +47,11 @@ export default function AdminQuizzes() {
               <tr key={r.id}>
                 <td className="px-2 py-2 border-b border-slate-100">{r.order}. {r.moduleTitle}</td>
                 <td className="px-2 py-2 border-b border-slate-100">
-                  <input className="rounded border border-slate-300 px-2 py-1 text-sm w-24" defaultValue={r.passScore} type="number" min={1} max={100} onBlur={(e) => save(r.id, Number(e.currentTarget.value), r.timeLimitSeconds)} />
-                </td>
-                <td className="px-2 py-2 border-b border-slate-100">
-                  <input className="rounded border border-slate-300 px-2 py-1 text-sm w-28" defaultValue={r.timeLimitSeconds} type="number" min={30} onBlur={(e) => save(r.id, r.passScore, Number(e.currentTarget.value))} />
+                  <input className="rounded border border-slate-300 px-2 py-1 text-sm w-24" defaultValue={r.passScore} type="number" min={1} max={100} onBlur={(e) => save(r.id, Number(e.currentTarget.value))} />
                 </td>
                 <td className="px-2 py-2 border-b border-slate-100">
                   <div className="flex gap-2">
-                    <button className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50" onClick={() => save(r.id, r.passScore, r.timeLimitSeconds)}>Save</button>
+                    <button className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50" onClick={() => save(r.id, r.passScore)}>Save</button>
                     <button className="rounded bg-red-600 text-white px-3 py-1.5 text-sm hover:bg-red-500" onClick={() => remove(r.id)}>Delete</button>
                   </div>
                 </td>

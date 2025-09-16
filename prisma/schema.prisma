@@ -31,8 +31,12 @@ model User {
 
   attempts     Attempt[]
   certificates Certificate[]
+  // Back-relations for new models
+  questionImports          QuestionImport[]
+  mainModuleProgresses     EmployeeMainModuleProgress[]
 }
 
+// Existing sub-module entity; now optionally linked to a MainModule
 model Module {
   id          String   @id @default(cuid())
   order       Int      @unique
@@ -44,6 +48,12 @@ model Module {
   updatedAt   DateTime @updatedAt
 
   quiz Quiz?
+
+  // New optional linkage into a MainModule hierarchy
+  mainModule       MainModule? @relation(fields: [mainModuleId], references: [id])
+  mainModuleId     Int?
+  // Order within a main module, independent of global 'order'
+  orderWithinMain  Int?
 }
 
 model Quiz {
@@ -57,15 +67,25 @@ model Quiz {
   attempts  Attempt[]
 }
 
+// Enhanced to support flexible question types while keeping legacy fields
 model Question {
   id           String   @id @default(cuid())
   quizId       String
   text         String
-  options      String[]
-  correctIndex Int
+  options      String[] // legacy MCQ options (retained)
+  correctIndex Int      // legacy correct index (retained)
   active       Boolean  @default(true)
 
   quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  // New fields for MCQ_2, MCQ_4 and TRUE/FALSE without breaking existing usage
+  questionType   String?   // 'MCQ_4', 'MCQ_2', 'TRUE_FALSE'
+  optionA        String?
+  optionB        String?
+  optionC        String?
+  optionD        String?
+  correctAnswer  String?   // 'A' | 'B' | 'C' | 'D' | 'TRUE' | 'FALSE'
+  orderIndex     Int?
 }
 
 model Attempt {
@@ -84,12 +104,63 @@ model Attempt {
   @@unique([userId, quizId, attemptNo])
 }
 
+// Certificates are now per MainModule (optional for legacy records)
 model Certificate {
-  id         String   @id @default(cuid())
-  userId     String   @unique
-  issuedAt   DateTime @default(now())
-  totalScore Int
-  filePath   String
+  id           String     @id @default(cuid())
+  userId       String
+  mainModuleId Int?
+  issuedAt     DateTime   @default(now())
+  totalScore   Int
+  filePath     String
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mainModule MainModule? @relation(fields: [mainModuleId], references: [id])
+
+  @@index([userId])
+  @@index([mainModuleId])
+  // A user may have at most one certificate per main module
+  @@unique([userId, mainModuleId])
+}
+
+// New MainModule entity
+model MainModule {
+  id                  Int        @id @default(autoincrement())
+  title               String
+  description         String?
+  youtubeId           String
+  isActive            Boolean    @default(true)
+  createdDate         DateTime   @default(now())
+  certificateTemplate String?
+  orderIndex          Int
+
+  subModules Module[]
+  certificates Certificate[]
+  progresses  EmployeeMainModuleProgress[]
+}
+
+// Track CSV/Excel bulk imports for questions
+model QuestionImport {
+  id                Int      @id @default(autoincrement())
+  uploadedById      String
+  uploadedBy        User     @relation(fields: [uploadedById], references: [id])
+  fileName          String
+  uploadDate        DateTime @default(now())
+  totalQuestions    Int
+  successfulImports Int
+  failedImports     Int
+  errorLog          String?
+}
+
+// Track an employee's progress through a MainModule
+model EmployeeMainModuleProgress {
+  id                     Int        @id @default(autoincrement())
+  employeeId             String
+  employee               User       @relation(fields: [employeeId], references: [id])
+  mainModuleId           Int
+  mainModule             MainModule @relation(fields: [mainModuleId], references: [id])
+  currentSubmoduleIndex  Int        @default(0)
+  isCompleted            Boolean    @default(false)
+  completionDate         DateTime?
+
+  @@unique([employeeId, mainModuleId])
 }

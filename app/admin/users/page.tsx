@@ -8,6 +8,8 @@ export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [modules, setModules] = useState<Module[]>([]);
+  const [mainModules, setMainModules] = useState<Array<{ id: number; orderIndex: number; title: string }>>([]);
+  const [mainId, setMainId] = useState<number | "">("");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -27,14 +29,17 @@ export default function AdminUsers() {
 
   async function load() {
     setLoading(true);
-    const [userRes, modRes] = await Promise.all([
+    const [userRes, modRes, mainRes] = await Promise.all([
       fetch("/api/admin/users", { cache: "no-store" }),
       fetch("/api/admin/modules", { cache: "no-store" }),
+      fetch("/api/admin/main-modules", { cache: "no-store" }),
     ]);
     const usersData = await userRes.json();
     const modulesData = await modRes.json();
+    const mainData = await mainRes.json().catch(() => ({ modules: [] }));
     setUsers(usersData.users);
     setModules(modulesData.modules.map((m: any) => ({ id: m.id, order: m.order, title: m.title })));
+    setMainModules((mainData.modules || []).map((m: any) => ({ id: m.id, orderIndex: m.orderIndex, title: m.title })));
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
@@ -79,6 +84,25 @@ export default function AdminUsers() {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) { setMessage(data.message || "Failed to reset attempts"); return; }
     setMessage("Attempts reset");
+  }
+
+  async function resetByMain() {
+    setMessage(null);
+    if (!resetUserId || mainId === "") { setMessage("Pick a user and a main module"); return; }
+    const res = await fetch(`/api/admin/users/reset-attempts`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: resetUserId, mainModuleId: Number(mainId) }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { setMessage(data.message || "Failed to reset attempts"); return; }
+    setMessage("Attempts reset for main module");
+  }
+
+  async function resetAll() {
+    setMessage(null);
+    if (!resetUserId) { setMessage("Pick a user first"); return; }
+    if (!confirm("Reset ALL attempts for this user?")) return;
+    const res = await fetch(`/api/admin/users/reset-attempts`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: resetUserId, all: true }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { setMessage(data.message || "Failed to reset attempts"); return; }
+    setMessage("All attempts reset for user");
   }
 
   function labelForUser(u: User) { return `${u.name} (${u.email})`; }
@@ -153,10 +177,10 @@ export default function AdminUsers() {
 
       <section className="rounded border border-slate-200 bg-white p-4 shadow-[var(--shadow-card)] mb-4">
         <h3 className="font-semibold mb-2">Reset Attempts</h3>
-        <form onSubmit={resetAttempts} className="grid gap-3 max-w-[720px]">
+        <div className="grid md:grid-cols-2 gap-3 max-w-[980px] items-end">
           <div>
-            <label className="mr-2">Employee:</label>
-            <input className="rounded border border-slate-300 px-3 py-2 text-sm" list="user-options" placeholder="Search by name or email" value={userQuery} onChange={(e) => onPickUser(e.target.value)} />
+            <label className="mr-2 text-sm text-slate-700">Employee</label>
+            <input className="w-full rounded border border-slate-300 px-3 py-2 text-sm" list="user-options" placeholder="Search by name or email" value={userQuery} onChange={(e) => onPickUser(e.target.value)} />
             <datalist id="user-options">
               {users.map((u) => (
                 <option key={u.id} value={labelForUser(u)} />
@@ -164,17 +188,29 @@ export default function AdminUsers() {
             </datalist>
           </div>
           <div>
-            <label className="mr-2">Module:</label>
-            <input className="rounded border border-slate-300 px-3 py-2 text-sm" list="module-options" placeholder="Search by title" value={moduleQuery} onChange={(e) => onPickModule(e.target.value)} />
+            <label className="mr-2 text-sm text-slate-700">Sub-module (Module)</label>
+            <input className="w-full rounded border border-slate-300 px-3 py-2 text-sm" list="module-options" placeholder="Search by title" value={moduleQuery} onChange={(e) => onPickModule(e.target.value)} />
             <datalist id="module-options">
               {modules.map((m) => (
                 <option key={m.id} value={labelForModule(m)} />
               ))}
             </datalist>
           </div>
-          <div className="text-slate-500 text-xs">Selected IDs: user {resetUserId || '—'} · module {moduleId || '—'}</div>
-          <button type="submit" disabled={!resetUserId || !moduleId} className="rounded bg-[color:var(--color-brand)] text-white px-3 py-2 text-sm disabled:opacity-50">Reset</button>
-        </form>
+          <div>
+            <label className="mr-2 text-sm text-slate-700">Main Module</label>
+            <select className="w-full rounded border border-slate-300 px-3 py-2 text-sm" value={mainId} onChange={(e) => setMainId(e.target.value === '' ? '' : Number(e.target.value))}>
+              <option value="">(None)</option>
+              {mainModules.map((m) => (
+                <option key={m.id} value={m.id}>{m.orderIndex}. {m.title}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <button onClick={resetAttempts as any} disabled={!resetUserId || !moduleId} className="rounded bg-[color:var(--color-brand)] text-white px-3 py-2 text-sm disabled:opacity-50">Reset by Sub-module</button>
+            <button onClick={resetByMain} disabled={!resetUserId || mainId === ''} className="rounded border border-slate-300 bg-white px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50">Reset by Main Module</button>
+            <button onClick={resetAll} disabled={!resetUserId} className="rounded border border-red-300 text-red-700 px-3 py-2 text-sm hover:bg-red-50 disabled:opacity-50">Reset ALL</button>
+          </div>
+        </div>
       </section>
 
       <h3 className="font-semibold mb-2">All Users</h3>

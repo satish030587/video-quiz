@@ -21,22 +21,39 @@ async function ensureFileForUser(userId: string) {
   // Require current eligibility
   const eligible = await allModulesPassed(userId);
   if (!eligible) return null;
-  const cert = await prisma.certificate.findUnique({ where: { userId } });
+  const cert = await (prisma as any).certificate.findFirst({ where: { userId, mainModuleId: null } });
   if (cert && fs.existsSync(cert.filePath)) return cert.filePath;
   // (Re)generate if eligible but missing
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return null;
-  // Compute simple average best score across modules
-  const modules = await prisma.module.findMany({ include: { quiz: true }, orderBy: { order: "asc" } });
-  let sum = 0, count = 0;
-  for (const m of modules) {
-    if (!m.quiz) continue;
-    const best = await prisma.attempt.findFirst({ where: { userId, quizId: m.quiz.id }, orderBy: { score: "desc" } });
-    if (best) { sum += best.score; count++; }
+  // Compute average across Main Modules if present; else across all modules
+  const mains = await (prisma as any).mainModule.findMany({});
+  let overallScore = 0;
+  if (mains && mains.length) {
+    let total = 0, groups = 0;
+    for (const mm of mains as Array<{ id: number }>) {
+      const subs = await prisma.module.findMany({ where: { mainModuleId: mm.id } as any, include: { quiz: true } });
+      let sum = 0, count = 0;
+      for (const m of subs) {
+        if (!m.quiz) continue;
+        const best = await prisma.attempt.findFirst({ where: { userId, quizId: m.quiz.id }, orderBy: { score: "desc" } });
+        if (best) { sum += best.score; count++; }
+      }
+      if (count) { total += Math.round(sum / count); groups++; }
+    }
+    overallScore = groups ? Math.round(total / groups) : 0;
+  } else {
+    const modules = await prisma.module.findMany({ include: { quiz: true } });
+    let sum = 0, count = 0;
+    for (const m of modules) {
+      if (!m.quiz) continue;
+      const best = await prisma.attempt.findFirst({ where: { userId, quizId: m.quiz.id }, orderBy: { score: "desc" } });
+      if (best) { sum += best.score; count++; }
+    }
+    overallScore = count ? Math.round(sum / count) : 0;
   }
-  const overallScore = count ? Math.round(sum / count) : 0;
-  const filePath = await generateCertificatePdf({ userName: user.name || user.email, userEmail: user.email, overallScore });
-  await prisma.certificate.upsert({ where: { userId }, update: { filePath, totalScore: overallScore }, create: { userId, filePath, totalScore: overallScore } });
+  const filePath = await generateCertificatePdf({ userName: user.name || user.email, userEmail: user.email, overallScore, contextTitle: "All Main Modules" });
+  await (prisma as any).certificate.upsert({ where: { userId_mainModuleId: { userId, mainModuleId: null } }, update: { filePath, totalScore: overallScore }, create: { userId, mainModuleId: null, filePath, totalScore: overallScore } });
   return filePath;
 }
 
@@ -70,4 +87,3 @@ export async function GET(req: Request) {
     return NextResponse.json({ message: "File not found" }, { status: 404 });
   }
 }
-

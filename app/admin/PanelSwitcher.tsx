@@ -7,6 +7,7 @@ const ModulesPanel = dynamic(() => import("./modules/page"), { ssr: false });
 const QuizzesPanel = dynamic(() => import("./quizzes/page"), { ssr: false });
 const QuestionsPanel = dynamic(() => import("./questions/page"), { ssr: false });
 const CertificatesPanel = dynamic(() => import("./certificates/page"), { ssr: false });
+const MainModulesPanel = dynamic(() => import("./main-modules/page"), { ssr: false });
 const SettingsPanelDyn = dynamic(() => import("./settings/page"), { ssr: false });
 
 // Lightweight client equivalents for simple server pages
@@ -33,6 +34,8 @@ export default function PanelSwitcher({ view }: { view: string }) {
       return <UsersPanel />;
     case "modules":
       return <ModulesPanel />;
+    case "main-modules":
+      return <MainModulesPanel />;
     case "quizzes":
       return <QuizzesPanel />;
     case "questions":
