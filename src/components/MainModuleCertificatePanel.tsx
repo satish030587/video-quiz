@@ -4,64 +4,48 @@ import { useEffect, useState } from "react";
 
 export default function MainModuleCertificatePanel({ mainModuleId }: { mainModuleId: number }) {
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<{ eligible?: boolean; url?: string } | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [completed, setCompleted] = useState(false);
 
-  async function load() {
-    setLoading(true);
-    setMessage(null);
-    try {
-      const res = await fetch(`/api/main-modules/${mainModuleId}/certificate`, { cache: "no-store" });
-      const json = await res.json();
-      setData(json);
-      
-      // Auto-generate certificate if eligible but not yet generated
-      if (json.eligible && !json.url) {
-        await generate();
+  useEffect(() => { 
+    // Just check if this main module is completed
+    async function checkCompletion() {
+      setLoading(true);
+      try {
+        // Use existing MainModuleProgress data to check if this module is completed
+        const res = await fetch(`/api/main-modules/${mainModuleId}/progress`, { cache: "no-store" });
+        const json = await res.json();
+        setCompleted(!!json.completed);
+      } catch (e) {
+        console.error("Failed to check module completion status", e);
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      setMessage("Failed to load certificate status");
-    } finally {
-      setLoading(false);
     }
-  }
-  useEffect(() => { load(); }, [mainModuleId]);
-
-  async function generate() {
-    setMessage(null);
-    try {
-      const res = await fetch(`/api/main-modules/${mainModuleId}/certificate`, { method: "POST" });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        setMessage(j.message || "Generate failed");
-        return;
-      }
-      await load();
-    } catch {
-      setMessage("Generate failed");
-    }
-  }
+    
+    checkCompletion();
+  }, [mainModuleId]);
 
   if (loading) return <div className="text-slate-600">Loading…</div>;
-  if (!data) return <div className="text-red-800 bg-red-50 border border-red-300 rounded px-3 py-2 text-sm">Error loading certificate.</div>;
 
   return (
     <div className="grid gap-3">
-      {message && (
-        <div className="text-red-800 bg-red-50 border border-red-300 rounded px-3 py-2 text-sm">{message}</div>
-      )}
-      {data.url ? (
-        <div className="flex items-center gap-3">
-          <span className="text-slate-800">Your certificate for this Main Module is ready.</span>
-          <a href={data.url} target="_blank" className="inline-flex items-center gap-2 rounded bg-[color:var(--color-brand)] !text-white px-3 py-2 text-sm hover:opacity-95">Download PDF</a>
-        </div>
-      ) : data.eligible ? (
-        <div className="flex items-center gap-3">
-          <span className="text-slate-800">Generating your certificate...</span>
-          <div className="animate-pulse rounded bg-slate-300 w-24 h-8"></div>
+      {completed ? (
+        <div className="text-slate-800">
+          <div className="flex items-start gap-2">
+            <svg className="w-5 h-5 mt-0.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div>
+              <p>This main module is completed.</p>
+              <p className="mt-1 text-slate-600 text-sm">Complete all main modules to earn your final certificate.</p>
+              <Link href="/certificate" className="inline-flex mt-2 items-center gap-2 rounded bg-[color:var(--color-brand)] !text-white px-3 py-1.5 text-sm hover:opacity-95">
+                Check Certificate Status
+              </Link>
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="text-slate-800">Complete all sub-modules to unlock this certificate.</div>
+        <div className="text-slate-800">Complete all sub-modules to mark this main module as completed.</div>
       )}
     </div>
   );

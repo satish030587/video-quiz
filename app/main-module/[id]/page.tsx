@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { getMainModuleProgress } from "@/lib/quiz";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import MainModuleCertificatePanel from "@/components/MainModuleCertificatePanel";
 
 export const dynamic = "force-dynamic";
 
@@ -70,10 +69,6 @@ export default async function MainModulePage({ params }: { params: Promise<{ id:
           )
         ))}
         {subs.length === 0 && <div className="text-slate-600">No sub-modules assigned.</div>}
-      </div>
-      <div className="mt-6 rounded border border-slate-200 bg-white p-3 shadow-[var(--shadow-card)]">
-        <h3 className="font-semibold mb-2">Certificate</h3>
-        <MainModuleCertificatePanel mainModuleId={Number(id)} />
       </div>
     </main>
   );

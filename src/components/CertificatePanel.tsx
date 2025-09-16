@@ -26,6 +26,11 @@ export default function CertificatePanel() {
       const res = await fetch(`/api/certificate`, { cache: "no-store" });
       const json = await res.json();
       setData(json);
+      
+      // Auto-generate certificate if eligible but not yet generated
+      if (json.eligible && !json.url) {
+        await generate();
+      }
     } catch {
       setMessage("Failed to load certificate status");
     } finally {
@@ -80,20 +85,18 @@ export default function CertificatePanel() {
           </div>
         </div>
       ) : data.eligible ? (
-        <div>
-          <p className="text-slate-800">You have completed all modules. Generate your certificate now.</p>
-          <div className="mt-3">
-            <button
-              onClick={generate}
-              className="rounded bg-[color:var(--color-brand)] text-white px-3 py-2 text-sm hover:opacity-95"
-            >
-              Generate Certificate
-            </button>
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 text-emerald-700"><TrophyIcon /></div>
+          <div>
+            <p className="text-slate-900">Generating your certificate...</p>
+            <div className="mt-3">
+              <div className="animate-pulse rounded bg-slate-300 w-36 h-9"></div>
+            </div>
           </div>
         </div>
       ) : (
         <div>
-          <p className="text-slate-800">Complete all modules to unlock your certificate.</p>
+          <p className="text-slate-800">Complete all main modules to unlock your final certificate.</p>
           <div className="mt-3">
             <Link href="/" className="inline-flex items-center gap-2 rounded bg-[color:var(--color-brand)] text-white !text-white px-3 py-2 text-sm hover:opacity-95" aria-label="Go to Dashboard">
               Go to Dashboard
