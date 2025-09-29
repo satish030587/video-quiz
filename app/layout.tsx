@@ -11,8 +11,8 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const merri = Merriweather({ subsets: ["latin"], weight: ["400","700"], variable: "--font-serif" });
 
 export const metadata: Metadata = {
-  title: "Sarvahitha Ayurvedalaya Pvt Ltd · Video Quiz",
-  description: "Quiz portal by Sarvahitha Ayurvedalaya Pvt Ltd",
+  title: "Ayurvedaone Pvt Ltd · Video Quiz",
+  description: "Training portal by Ayurvedaone Pvt Ltd",
 };
 
 export default async function RootLayout({

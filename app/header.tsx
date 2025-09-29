@@ -16,9 +16,9 @@ export default function Header() {
     <header className="bg-white border-b">
       <div className="px-4 py-3 flex flex-wrap items-center gap-3">
         <Link href="/" className="text-lg font-semibold text-[color:var(--color-brand)]">
-          Sarvahitha Ayurvedalaya Pvt Ltd
+          AYURVEDAONE
         </Link>
-        <span className="hidden sm:inline text-sm text-slate-500">· Quiz Portal</span>
+        <span className="hidden sm:inline text-sm text-slate-500">Training Portal</span>
         <div className="ml-auto flex items-center gap-3">
           {!session ? (
             <Link href="/login" className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">Login</Link>

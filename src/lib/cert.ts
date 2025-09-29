@@ -43,7 +43,7 @@ export async function generateCertificatePdf({
 
   // Header band
   page.drawRectangle({ x: 0, y: height - 72, width, height: 72, color: rgb(colors.primary.r, colors.primary.g, colors.primary.b) });
-  page.drawText("Sarvahitha Ayurvedalaya Pvt Ltd", { x: 56, y: height - 48, size: 14, font: fontReg, color: rgb(1,1,1) });
+  page.drawText("Ayurvedaone Pvt Ltd", { x: 56, y: height - 48, size: 14, font: fontReg, color: rgb(1,1,1) });
 
   // Border
   page.drawRectangle({ x: 24, y: 24, width: width - 48, height: height - 48, borderColor: rgb(colors.primary.r, colors.primary.g, colors.primary.b), borderWidth: 2 });

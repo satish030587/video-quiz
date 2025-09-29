@@ -46,7 +46,7 @@ export async function POST(req: Request) {
   const link = `${appOrigin()}/signup?token=${encodeURIComponent(token)}`;
   const html = `
     <p>Hi${name ? ` ${name}` : ""},</p>
-    <p>You have been invited to the Video Quiz portal. Click the link below to complete your signup and set a password:</p>
+    <p>You have been invited to the Video Training portal. Click the link below to complete your signup and set a password:</p>
     <p><a href="${link}">${link}</a></p>
     <p>If you did not expect this, you can ignore this email.</p>
   `;

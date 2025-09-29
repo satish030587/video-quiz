@@ -52,7 +52,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
   const ClassicInner = (
     <>
-      <h1 className="text-2xl font-semibold mb-1 text-[color:var(--color-brand)]">Quiz Dashboard</h1>
+      <h1 className="text-2xl font-semibold mb-1 text-[color:var(--color-brand)]">Training Dashboard</h1>
       <p className="text-slate-700 mb-3">Welcome, {(session.user as any).name}. Progress: {passedCount}/{totalSubs} sub-modules passed.</p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 my-3">

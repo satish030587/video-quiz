@@ -31,8 +31,8 @@ export default function ForgotPage() {
     <main className="min-h-screen grid place-items-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center">
-          <div className="text-[color:var(--color-brand)] font-semibold text-lg">Sarvahitha Ayurvedalaya Pvt Ltd</div>
-          <div className="text-slate-500 text-sm">Quiz Portal</div>
+          <div className="text-[color:var(--color-brand)] font-semibold text-lg">Ayurvedaone Pvt Ltd</div>
+          <div className="text-slate-500 text-sm">Training Portal</div>
         </div>
         <h1 className="text-2xl font-semibold mt-4 mb-4 text-[color:var(--color-brand)] text-center">Forgot Password</h1>
         <div className="rounded border border-slate-200 bg-white p-4 shadow-[var(--shadow-card)]">
